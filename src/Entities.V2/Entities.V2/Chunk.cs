@@ -86,8 +86,8 @@ namespace kv.Entities.V2
 
         public void Dispose()
         {
-            BufferMemoryOwner.Dispose();
             Buffer = Memory<byte>.Empty;
+            BufferMemoryOwner.Dispose();
 
             for (var i = 0; i < ManagedComponents.Length; i++)
             {
@@ -102,8 +102,6 @@ namespace kv.Entities.V2
                 ComponentArrayPool.Return(typeInfo, componentArray);
                 ManagedComponents[i] = null;
             }
-
-            ManagedComponents = null!;
         }
 
         [PublicAPI]
