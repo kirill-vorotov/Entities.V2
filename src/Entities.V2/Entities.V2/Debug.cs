@@ -23,25 +23,31 @@
  */
 
 #nullable enable
+using JetBrains.Annotations;
+
 namespace kv.Entities.V2
 {
     public class Debug
     {
+        [System.Diagnostics.Conditional("DEBUG"), AssertionMethod, ContractAnnotation("condition:false=>halt")]
         public static void Assert(bool condition)
         {
             System.Diagnostics.Debug.Assert(condition);
         }
         
+        [System.Diagnostics.Conditional("DEBUG"), AssertionMethod, ContractAnnotation("condition:false=>halt")]
         public static void Assert(bool condition, string message)
         {
             System.Diagnostics.Debug.Assert(condition, message);
         }
         
+        [System.Diagnostics.Conditional("DEBUG"), AssertionMethod, ContractAnnotation("condition:false=>halt")]
         public static void Assert(bool condition, string message, string detailMessage)
         {
             System.Diagnostics.Debug.Assert(condition, message, detailMessage);
         }
         
+        [System.Diagnostics.Conditional("DEBUG"), AssertionMethod, ContractAnnotation("condition:false=>halt")]
         public static void Assert(bool condition, string message, string detailMessageFormat, params object[] args)
         {
             System.Diagnostics.Debug.Assert(condition, message, detailMessageFormat, args);
