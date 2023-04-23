@@ -23,11 +23,14 @@
  */
 
 #nullable enable
+using System.Runtime.CompilerServices;
+
 namespace kv.Entities.V2
 {
     public readonly struct Entity
     {
-        public static Entity Create() => new(-1, -1);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Entity CreateInvalid() => new(-1, -1);
         
         public readonly int Id;
         public readonly int Version;
