@@ -173,15 +173,95 @@ namespace kv.Entities.V2
         }
 
         [PublicAPI]
-        public bool RemoveAt(int indexInChunk)
+        public void RemoveAt(int indexInChunk)
         {
-            throw new System.NotImplementedException();
+            Debug.Assert(indexInChunk >= 0 && indexInChunk < Count);
+
+            if (indexInChunk == Count - 1)
+            {
+                // Remove last entity
+                foreach (var typeInfo in GroupComponentTypes)
+                {
+                    if (typeInfo.IsUnmanaged)
+                    {
+                        continue;
+                    }
+
+                    var arrayIndex = ArrayIndexLookup[typeInfo.Id];
+                    var array = ManagedComponents[arrayIndex];
+                    Debug.Assert(array is not null);
+                    Array.Clear(array, indexInChunk, 1);
+                }
+                
+                Entities[indexInChunk] = Entity.CreateInvalid();
+                Count--;
+                return;
+            }
+            
+            var lastIndexInChunk = Count - 1;
+
+            foreach (var typeInfo in GroupComponentTypes)
+            {
+                if (typeInfo.IsZeroSized)
+                {
+                    continue;
+                }
+
+                var offsetOrArrayIndex = ArrayIndexLookup[typeInfo.Id];
+                
+                if (typeInfo.IsUnmanaged)
+                {
+                    var dstSpan = Buffer.Span.Slice(offsetOrArrayIndex + indexInChunk * typeInfo.Size, typeInfo.Size);
+                    var srcSpan = Buffer.Span.Slice(offsetOrArrayIndex + lastIndexInChunk * typeInfo.Size, typeInfo.Size);
+                    srcSpan.CopyTo(dstSpan);
+                }
+                else
+                {
+                    var array = ManagedComponents[offsetOrArrayIndex];
+                    Debug.Assert(array is not null);
+                    Array.Copy(array, lastIndexInChunk, array, indexInChunk, 1);
+                    Array.Clear(array, lastIndexInChunk, 1);
+                }
+            }
+
+            Entities[indexInChunk] = Entities[lastIndexInChunk];
+            Entities[lastIndexInChunk] = Entity.CreateInvalid();
+            Count--;
         }
 
         [PublicAPI]
         public void CopyTo(int srcIndexInChunk, Chunk dst, int dstIndexInChunk)
         {
-            throw new System.NotImplementedException();
+            Debug.Assert(dst.Count < dst.Capacity);
+
+            foreach (var typeInfo in GroupComponentTypes)
+            {
+                var srcOffsetOrArrayIndex = ArrayIndexLookup[typeInfo.Id];
+                var dstOffsetOrArrayIndex = dst.ArrayIndexLookup[typeInfo.Id];
+
+                if (typeInfo.IsZeroSized || dstOffsetOrArrayIndex < 0)
+                {
+                    // nothing to copy
+                    continue;
+                }
+
+                if (typeInfo.IsUnmanaged)
+                {
+                    var srcSpan = Buffer.Span.Slice(srcOffsetOrArrayIndex + srcIndexInChunk * typeInfo.Size, typeInfo.Size);
+                    var dstSpan = dst.Buffer.Span.Slice(dstOffsetOrArrayIndex + dstIndexInChunk * typeInfo.Size, typeInfo.Size);
+                    srcSpan.CopyTo(dstSpan);
+                }
+                else
+                {
+                    var srcArray = ManagedComponents[srcOffsetOrArrayIndex];
+                    var dstArray = dst.ManagedComponents[dstOffsetOrArrayIndex];
+                    Debug.Assert(srcArray is not null);
+                    Debug.Assert(dstArray is not null);
+                    Array.Copy(srcArray, srcIndexInChunk, dstArray, dstIndexInChunk, 1);
+                }
+
+                dst.Entities[dstIndexInChunk] = Entities[srcIndexInChunk];
+            }
         }
 
         [PublicAPI]
@@ -198,6 +278,7 @@ namespace kv.Entities.V2
             }
             
             Buffer.Span.Clear();
+            Entities.AsSpan().Fill(Entity.CreateInvalid());
             Count = 0;
         }
     }
