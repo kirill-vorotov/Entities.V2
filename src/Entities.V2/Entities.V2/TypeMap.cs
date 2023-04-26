@@ -23,68 +23,139 @@
  */
 
 #nullable enable
+using System;
+using System.Linq;
 using System.Threading;
+using JetBrains.Annotations;
 
 namespace kv.Entities.V2
 {
     public class TypeMap<TValue>
     {
-        public ref struct Enumerator
+        public static class TypeIndex<T>
         {
-            public TypeInfo Current
-            {
-                get => throw new System.NotImplementedException();
-            }
+            // ReSharper disable once StaticMemberInGenericType
+            public static readonly int Value = Interlocked.Increment(ref _lastIndex);
+        }
 
-            public bool MoveNext()
+        internal struct Entry
+        {
+            public TValue? Value;
+            public bool HasValue;
+
+            public Entry(TValue value, bool hasValue = true)
             {
-                throw new System.NotImplementedException();
+                Value = value;
+                HasValue = hasValue;
             }
         }
         
         // ReSharper disable once StaticMemberInGenericType
         private static volatile int _lastIndex = -1;
-        
-        public static class TypeIndex<T>
-        {
-            // ReSharper disable once StaticMemberInGenericType
-            public static readonly int Index = Interlocked.Increment(ref _lastIndex);
-        }
+        private Entry[] _entries = new Entry[DefaultCapacity];
         
         public const int DefaultCapacity = 16;
-        
-        public int Count => throw new System.NotImplementedException();
 
+        public TypeMap()
+        {
+            EnsureCapacity();
+        }
+
+        public int Capacity => _entries.Length;
+        public int Count => _entries.Count(e => e.HasValue);
+
+        [PublicAPI]
         public void Add<TKey>(TValue value)
         {
-            throw new System.NotImplementedException();
+            var index = TypeIndex<TKey>.Value;
+            EnsureCapacity();
+            if (_entries[index].HasValue)
+            {
+                throw new Exception("Key already exists.");
+            }
+
+            _entries[index].HasValue = true;
+            _entries[index].Value = value;
         }
 
+        [PublicAPI]
         public bool TryAdd<TKey>(TValue value)
         {
-            throw new System.NotImplementedException();
+            var index = TypeIndex<TKey>.Value;
+            EnsureCapacity();
+            if (_entries[index].HasValue)
+            {
+                return false;
+            }
+            
+            _entries[index].HasValue = true;
+            _entries[index].Value = value;
+            return true;
         }
 
+        [PublicAPI]
         public void Set<TKey>(TValue value)
         {
-            throw new System.NotImplementedException();
+            var index = TypeIndex<TKey>.Value;
+            EnsureCapacity();
+            _entries[index].HasValue = true;
+            _entries[index].Value = value;
         }
 
+        [PublicAPI]
         public bool Remove<TKey>()
         {
-            throw new System.NotImplementedException();
+            var index = TypeIndex<TKey>.Value;
+            if (index < 0 || index >= _entries.Length || !_entries[index].HasValue)
+            {
+                return false;
+            }
+
+            _entries[index].HasValue = false;
+            _entries[index].Value = default;
+            return true;
         }
 
+        [PublicAPI]
         public bool ContainsKey<TKey>()
         {
-            throw new System.NotImplementedException();
+            var index = TypeIndex<TKey>.Value;
+            return index >= 0 && index < _entries.Length && _entries[index].HasValue;
         }
 
-        public bool TryGetValue<TKey>(out TValue value)
+        [PublicAPI]
+        public bool TryGetValue<TKey>(out TValue? value)
         {
-            throw new System.NotImplementedException();
+            var index = TypeIndex<TKey>.Value;
+            if (index < 0 || index >= _entries.Length || !_entries[index].HasValue)
+            {
+                value = default;
+                return false;
+            }
+
+            value = _entries[index].Value;
+            return true;
         }
 
-        public Enumerator GetEnumerator() => new Enumerator();
+        private void EnsureCapacity()
+        {
+            var capacity = _lastIndex + 1;
+
+            if (capacity <= _entries.Length)
+            {
+                return;
+            }
+
+            if (capacity < DefaultCapacity)
+            {
+                capacity = DefaultCapacity;
+            }
+            else
+            {
+                capacity <<= 1;
+            }
+            
+            Array.Resize(ref _entries, capacity);
+        }
     }
 }
