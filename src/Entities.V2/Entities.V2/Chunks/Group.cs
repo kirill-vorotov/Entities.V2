@@ -340,6 +340,8 @@ namespace kv.Entities.V2
             }
         }
 
+        internal IEnumerable<Entry> Entries => _entries;
+        
         internal void Clear()
         {
             _chunkIndices.Clear();
