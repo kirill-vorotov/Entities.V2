@@ -23,24 +23,20 @@
  */
 
 #nullable enable
+using System;
+using System.Collections.Concurrent;
 using JetBrains.Annotations;
 
 namespace kv.Entities.V2
 {
     public sealed partial class World
     {
-        internal TypeMap<ChunkQuery> ChunkQueries = new();
-        
-        [PublicAPI]
-        public void SetQuery<T>(ChunkQuery chunkQuery) => ChunkQueries.Set<T>(chunkQuery);
-
-        [PublicAPI]
-        public bool TryGetQuery<T>(out ChunkQuery? chunkQuery) => ChunkQueries.TryGetValue<T>(out chunkQuery);
+        internal ConcurrentDictionary<Type, ChunkQuery> ChunkQueries = new();
 
         [PublicAPI]
         public void UpdateCachedQueries()
         {
-            foreach (var chunkQuery in ChunkQueries)
+            foreach (var chunkQuery in ChunkQueries.Values)
             {
                 chunkQuery?.Update();
             }
