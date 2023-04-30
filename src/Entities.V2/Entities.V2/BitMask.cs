@@ -164,7 +164,7 @@ namespace kv.Entities.V2
         }
         
         [PublicAPI]
-        public bool Equals(BitMask other)
+        public readonly bool Equals(BitMask other)
         {
             if (Buffer.Length != other.Buffer.Length)
             {

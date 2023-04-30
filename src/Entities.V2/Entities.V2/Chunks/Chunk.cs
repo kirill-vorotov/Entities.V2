@@ -177,7 +177,6 @@ namespace kv.Entities.V2
 
             if (indexInChunk == Count - 1)
             {
-                // Remove last entity
                 foreach (var typeInfo in GroupComponentTypes)
                 {
                     if (typeInfo.IsUnmanaged)
@@ -239,7 +238,6 @@ namespace kv.Entities.V2
 
                 if (typeInfo.IsZeroSized || dstOffsetOrArrayIndex < 0)
                 {
-                    // nothing to copy
                     continue;
                 }
 

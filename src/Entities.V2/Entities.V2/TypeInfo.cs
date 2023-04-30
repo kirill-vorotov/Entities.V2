@@ -32,17 +32,19 @@ namespace kv.Entities.V2
         public readonly int Id;
         public readonly Type Type;
         public readonly int Size;
+        public readonly int Alignment;
         public readonly bool HasFields;
         public readonly bool IsUnmanaged;
         public readonly bool IsGroupComponent;
 
         public bool IsZeroSized => IsUnmanaged && !HasFields;
 
-        public TypeInfo(int id, Type type, int size, bool hasFields, bool isUnmanaged, bool isGroupComponent)
+        public TypeInfo(int id, Type type, int size, int alignment, bool hasFields, bool isUnmanaged, bool isGroupComponent)
         {
             Id = id;
             Type = type;
             Size = size;
+            Alignment = alignment;
             HasFields = hasFields;
             IsUnmanaged = isUnmanaged;
             IsGroupComponent = isGroupComponent;

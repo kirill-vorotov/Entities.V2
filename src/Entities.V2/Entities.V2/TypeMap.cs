@@ -50,9 +50,36 @@ namespace kv.Entities.V2
             }
         }
         
+        public ref struct Enumerator
+        {
+            internal Entry[] Entries;
+            internal int CurrentIndex;
+
+            internal Enumerator(Entry[] entries)
+            {
+                Entries = entries;
+                CurrentIndex = -1;
+            }
+
+            public TValue? Current => Entries[CurrentIndex].Value;
+
+            public bool MoveNext()
+            {
+                do
+                {
+                    if (++CurrentIndex >= Entries.Length)
+                    {
+                        return false;
+                    }
+                } while (!Entries[CurrentIndex].HasValue);
+
+                return true;
+            }
+        }
+        
         // ReSharper disable once StaticMemberInGenericType
         private static volatile int _lastIndex = -1;
-        private Entry[] _entries = new Entry[DefaultCapacity];
+        internal Entry[] Entries = new Entry[DefaultCapacity];
         
         public const int DefaultCapacity = 16;
 
@@ -61,21 +88,21 @@ namespace kv.Entities.V2
             EnsureCapacity();
         }
 
-        public int Capacity => _entries.Length;
-        public int Count => _entries.Count(e => e.HasValue);
+        public int Capacity => Entries.Length;
+        public int Count => Entries.Count(e => e.HasValue);
 
         [PublicAPI]
         public void Add<TKey>(TValue value)
         {
             var index = TypeIndex<TKey>.Value;
             EnsureCapacity();
-            if (_entries[index].HasValue)
+            if (Entries[index].HasValue)
             {
                 throw new Exception("Key already exists.");
             }
 
-            _entries[index].HasValue = true;
-            _entries[index].Value = value;
+            Entries[index].HasValue = true;
+            Entries[index].Value = value;
         }
 
         [PublicAPI]
@@ -83,13 +110,13 @@ namespace kv.Entities.V2
         {
             var index = TypeIndex<TKey>.Value;
             EnsureCapacity();
-            if (_entries[index].HasValue)
+            if (Entries[index].HasValue)
             {
                 return false;
             }
             
-            _entries[index].HasValue = true;
-            _entries[index].Value = value;
+            Entries[index].HasValue = true;
+            Entries[index].Value = value;
             return true;
         }
 
@@ -98,21 +125,21 @@ namespace kv.Entities.V2
         {
             var index = TypeIndex<TKey>.Value;
             EnsureCapacity();
-            _entries[index].HasValue = true;
-            _entries[index].Value = value;
+            Entries[index].HasValue = true;
+            Entries[index].Value = value;
         }
 
         [PublicAPI]
         public bool Remove<TKey>()
         {
             var index = TypeIndex<TKey>.Value;
-            if (index < 0 || index >= _entries.Length || !_entries[index].HasValue)
+            if (index < 0 || index >= Entries.Length || !Entries[index].HasValue)
             {
                 return false;
             }
 
-            _entries[index].HasValue = false;
-            _entries[index].Value = default;
+            Entries[index].HasValue = false;
+            Entries[index].Value = default;
             return true;
         }
 
@@ -120,28 +147,30 @@ namespace kv.Entities.V2
         public bool ContainsKey<TKey>()
         {
             var index = TypeIndex<TKey>.Value;
-            return index >= 0 && index < _entries.Length && _entries[index].HasValue;
+            return index >= 0 && index < Entries.Length && Entries[index].HasValue;
         }
 
         [PublicAPI]
         public bool TryGetValue<TKey>(out TValue? value)
         {
             var index = TypeIndex<TKey>.Value;
-            if (index < 0 || index >= _entries.Length || !_entries[index].HasValue)
+            if (index < 0 || index >= Entries.Length || !Entries[index].HasValue)
             {
                 value = default;
                 return false;
             }
 
-            value = _entries[index].Value;
+            value = Entries[index].Value;
             return true;
         }
+
+        public Enumerator GetEnumerator() => new(Entries);
 
         private void EnsureCapacity()
         {
             var capacity = _lastIndex + 1;
 
-            if (capacity <= _entries.Length)
+            if (capacity <= Entries.Length)
             {
                 return;
             }
@@ -155,7 +184,7 @@ namespace kv.Entities.V2
                 capacity <<= 1;
             }
             
-            Array.Resize(ref _entries, capacity);
+            Array.Resize(ref Entries, capacity);
         }
     }
 }
