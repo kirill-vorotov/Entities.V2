@@ -164,6 +164,12 @@ namespace kv.Entities.V2
             return true;
         }
 
+        [PublicAPI]
+        public void Clear()
+        {
+            Array.Clear(Entries, 0, Entries.Length);
+        }
+
         public Enumerator GetEnumerator() => new(Entries);
 
         private void EnsureCapacity()

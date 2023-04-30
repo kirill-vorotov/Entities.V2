@@ -38,6 +38,8 @@ namespace kv.Entities.V2
         internal TypeMap<IComponentList?> Components = new();
 
         internal List<Entity> ToDestroy = new();
+        internal List<EntityToCreate> ToCreate = new();
+        internal List<EntityToUpdate> ToUpdate = new();
 
         internal CommandBuffer(int threadId, TypeMap<TypeInfo> componentTypes)
         {
@@ -48,7 +50,10 @@ namespace kv.Entities.V2
         [PublicAPI]
         public FutureEntity CreateEntity()
         {
-            throw new System.NotImplementedException();
+            var futureEntityId = ToCreate.Count;
+            var futureEntity = new FutureEntity(futureEntityId);
+            ToCreate.Add(new EntityToCreate(futureEntity));
+            return futureEntity;
         }
 
         [PublicAPI]
@@ -72,7 +77,26 @@ namespace kv.Entities.V2
         [PublicAPI]
         public void AddUnmanagedComponent<T>(Entity entity, T value) where T : unmanaged, IEntityComponent
         {
-            throw new System.NotImplementedException();
+            if (entity.Id >= ToUpdate.Capacity)
+            {
+                ToUpdate.Capacity = entity.Id + 1;
+            }
+
+            if (!ComponentTypes.TryGetValue<T>(out var typeInfo))
+            {
+                return;
+            }
+            
+            Debug.Assert(typeInfo is { IsUnmanaged: true });
+
+            if (!ToUpdate[entity.Id].HasValue)
+            {
+                ToUpdate[entity.Id] = new EntityToUpdate(entity);
+            }
+            if (TryAddUnmanagedComponent(value, out var index))
+            {
+                ToUpdate[entity.Id].Components.Set<T>(index);
+            }
         }
 
         [PublicAPI]
@@ -101,7 +125,33 @@ namespace kv.Entities.V2
 
         internal void Clear()
         {
-            throw new System.NotImplementedException();
+            foreach (var componentList in Components)
+            {
+                componentList?.Dispose();
+            }
+
+            Components.Clear();
+            ToDestroy.Clear();
+
+            foreach (var entityToCreate in ToCreate)
+            {
+                if (!entityToCreate.HasValue)
+                {
+                    continue;
+                }
+                
+                entityToCreate.Components.Clear();
+            }
+
+            foreach (var entityToUpdate in ToUpdate)
+            {
+                if (!entityToUpdate.HasValue)
+                {
+                    continue;
+                }
+                
+                entityToUpdate.Components.Clear();
+            }
         }
 
         private bool TryAddUnmanagedComponent<T>(T value, out int index) where T : unmanaged, IEntityComponent
