@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Entities.V2.SourceGen\Entities.V2.SourceGen.csproj" />
+      <ProjectReference Include="..\Entities.V2\Entities.V2.csproj" />
+    </ItemGroup>
+
+</Project>
