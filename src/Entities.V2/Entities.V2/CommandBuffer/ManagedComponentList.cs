@@ -81,7 +81,8 @@ namespace kv.Entities.V2
                 return;
             }
 
-            var dstArray = chunk.ManagedComponents;
+            var dstArray = chunk.ManagedComponents[arrayIndex];
+            Debug.Assert(dstArray is not null);
             System.Array.Copy(Array, srcIndex, dstArray, dstIndexInChunk, 1);
         }
         
