@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Entities.V2.SourceGen\Entities.V2.SourceGen.csproj" />
+      <ProjectReference Include="..\Entities.V2.SourceGen\Entities.V2.SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <ProjectReference Include="..\Entities.V2\Entities.V2.csproj" />
     </ItemGroup>
 
