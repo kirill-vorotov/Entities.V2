@@ -53,20 +53,20 @@ namespace kv.Entities.V2
                                               Entities[entity.Id].Version == entity.Version;
 
         [PublicAPI]
-        public Entity CreateEntity(Group targetGroup, int targetGroupId)
+        public Entity CreateEntity(Group targetGroup, int targetGroupId, out int chunkId, out Chunk chunk, out int indexInChunk)
         {
             Entity entity;
             
             if (LastDestroyedEntityId == -1)
             {
                 entity = new Entity(Entities.Count, 0);
-                targetGroup.CreateEntity(entity, out var chunkId, out _, out var indexInChunk);
+                targetGroup.CreateEntity(entity, out chunkId, out chunk, out indexInChunk);
                 Entities.Add(new EntityInfo(entity.Id, entity.Version, targetGroupId, chunkId, indexInChunk));
             }
             else
             {
                 entity = new Entity(LastDestroyedEntityId, Entities[LastDestroyedEntityId].Version);
-                targetGroup.CreateEntity(entity, out var chunkId, out _, out var indexInChunk);
+                targetGroup.CreateEntity(entity, out chunkId, out chunk, out indexInChunk);
 
                 LastDestroyedEntityId = Entities[LastDestroyedEntityId].Id;
                 Entities[entity.Id] = new EntityInfo(entity.Id, entity.Version, targetGroupId, chunkId, indexInChunk);
@@ -142,30 +142,35 @@ namespace kv.Entities.V2
             LastDestroyedEntityId = -1;
         }
         
-        internal bool TryGetGroup(BitMask bitMask, out Group? group)
+        internal bool TryGetGroup(BitMask bitMask, out Group? group, out int groupId)
         {
             group = default;
-            foreach (var g in Groups)
+            groupId = -1;
+
+            for (var index = 0; index < Groups.Count; index++)
             {
+                var g = Groups[index];
                 if (!g.BitMask.Equals(bitMask))
                 {
                     continue;
                 }
 
                 group = g;
+                groupId = index;
                 return true;
             }
 
             return false;
         }
 
-        internal Group CreateGroup(BitMask bitMask)
+        internal Group CreateGroup(BitMask bitMask, out int groupId)
         {
             var newBitMask = new BitMask(new ulong[bitMask.Buffer.Length]);
             newBitMask.SetAll(bitMask);
             
             var group = new Group(AllTypes, newBitMask, MemoryPool, ComponentArrayPool);
             Groups.Add(group);
+            groupId = Groups.Count - 1;
             return group;
         }
     }

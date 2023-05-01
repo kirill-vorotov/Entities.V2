@@ -23,6 +23,8 @@
  */
 
 #nullable enable
+using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Threading;
 using JetBrains.Annotations;
@@ -52,11 +54,125 @@ namespace kv.Entities.V2
         {
             foreach (var commandBuffer in CommandBuffers.Values)
             {
-                // TODO
+                DestroyEntities(commandBuffer);
+                CreateEntities(commandBuffer);
+                UpdateEntities(commandBuffer);
                 commandBuffer.Clear();
             }
             
             UpdateCachedQueries();
+        }
+
+        private void DestroyEntities(CommandBuffer commandBuffer)
+        {
+            foreach (var entity in commandBuffer.ToDestroy)
+            {
+                EntityRepo.DestroyEntity(entity);
+            }
+        }
+
+        private void CreateEntities(CommandBuffer commandBuffer)
+        {
+            var bufferSize = BitMask.GetBufferSize(ComponentTypes.Entries.Length);
+            var bitMaskMemoryOwner = MemoryPool<ulong>.Shared.Rent(bufferSize);
+            var bitMask = new BitMask(bitMaskMemoryOwner.Memory[..bufferSize]);
+
+            Group? group = default;
+            var groupId = -1;
+
+            foreach (var entityToCreate in commandBuffer.ToCreate)
+            {
+                if (!entityToCreate.HasValue)
+                {
+                    continue;
+                }
+                
+                bitMask.SetAll(false);
+
+                foreach (var component in entityToCreate.Components)
+                {
+                    bitMask[component.typeId] = true;
+                }
+
+                if (group is null || !group.BitMask.Equals(bitMask))
+                {
+                    if (!EntityRepo.TryGetGroup(bitMask, out group, out groupId))
+                    {
+                        group = EntityRepo.CreateGroup(bitMask, out groupId);
+                    }
+                }
+
+                Debug.Assert(group is not null);
+                EntityRepo.CreateEntity(group, groupId, out _, out var chunk, out var indexInChunk);
+                
+                foreach (var component in entityToCreate.Components)
+                {
+                    var srcList = commandBuffer.Components[component.typeId];
+                    if (srcList is null || component.index == -1)
+                    {
+                        continue;
+                    }
+                    
+                    srcList.CopyComponentTo(component.index, chunk, indexInChunk);
+                }
+            }
+
+            bitMaskMemoryOwner.Dispose();
+        }
+
+        private void UpdateEntities(CommandBuffer commandBuffer)
+        {
+            var bufferSize = BitMask.GetBufferSize(ComponentTypes.Entries.Length);
+            var bitMaskMemoryOwner = MemoryPool<ulong>.Shared.Rent(bufferSize);
+            var bitMask = new BitMask(bitMaskMemoryOwner.Memory[..bufferSize]);
+            
+            Group? group = default;
+            var groupId = -1;
+
+            foreach (var entityToUpdate in commandBuffer.ToUpdate)
+            {
+                if (!entityToUpdate.HasValue)
+                {
+                    continue;
+                }
+                
+                bitMask.SetAll(false);
+
+                foreach (var component in entityToUpdate.Components)
+                {
+                    bitMask[component.typeId] = component.command switch
+                    {
+                        EntityToUpdate.Command.Add => true,
+                        EntityToUpdate.Command.Remove => false,
+                        _ => throw new ArgumentOutOfRangeException()
+                    };
+                }
+                
+                if (group is null || !group.BitMask.Equals(bitMask))
+                {
+                    if (!EntityRepo.TryGetGroup(bitMask, out group, out groupId))
+                    {
+                        group = EntityRepo.CreateGroup(bitMask, out groupId);
+                    }
+                }
+
+                Debug.Assert(group is not null);
+                
+                EntityRepo.MoveEntity(entityToUpdate.Entity, groupId, group, out _, out var dstChunk, out var dstIndexInChunk);
+                
+                foreach (var component in entityToUpdate.Components)
+                {
+                    var srcList = commandBuffer.Components[component.typeId];
+                    if (component.command == EntityToUpdate.Command.Remove || srcList is null || component.index == -1)
+                    {
+                        continue;
+                    }
+                    
+                    srcList.CopyComponentTo(component.index, dstChunk, dstIndexInChunk);
+                }
+            }
+            
+            bitMaskMemoryOwner.Dispose();
         }
     }
 }

@@ -23,6 +23,7 @@
  */
 
 #nullable enable
+using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -35,16 +36,18 @@ namespace kv.Entities.V2
         internal readonly int ThreadId;
         internal readonly TypeMap<TypeInfo> ComponentTypes;
 
-        internal TypeMap<IComponentList?> Components = new();
+        internal IComponentList?[] Components;
 
         internal List<Entity> ToDestroy = new();
         internal List<EntityToCreate> ToCreate = new();
-        internal List<EntityToUpdate> ToUpdate = new();
+        internal EntityToUpdate[] ToUpdate = new EntityToUpdate[16];
 
         internal CommandBuffer(int threadId, TypeMap<TypeInfo> componentTypes)
         {
             ThreadId = threadId;
             ComponentTypes = componentTypes;
+
+            Components = new IComponentList[ComponentTypes.Entries.Length];
         }
 
         [PublicAPI]
@@ -65,28 +68,54 @@ namespace kv.Entities.V2
         [PublicAPI]
         public void AddComponent<T>(Entity entity) where T : IEntityComponent
         {
-            throw new System.NotImplementedException();
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            
+            var length = ToUpdate.Length;
+            while (length <= entity.Id)
+            {
+                length <<= 1;
+            }
+            
+            if (ToUpdate.Length <= entity.Id)
+            {
+                Array.Resize(ref ToUpdate, length);
+            }
+            
+            if (!ToUpdate[entity.Id].HasValue)
+            {
+                ToUpdate[entity.Id] = new EntityToUpdate(entity);
+            }
+            ToUpdate[entity.Id].Components.Set<T>((typeInfo.Id, -1, EntityToUpdate.Command.Add));
         }
 
         [PublicAPI]
         public void AddComponent<T>(FutureEntity entity) where T : IEntityComponent
         {
-            throw new System.NotImplementedException();
+            Debug.Assert(entity.Id >= 0 && entity.Id < ToCreate.Count);
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            
+            ToCreate[entity.Id].Components.Set<T>((typeInfo.Id, -1));
         }
 
         [PublicAPI]
         public void AddUnmanagedComponent<T>(Entity entity, T value) where T : unmanaged, IEntityComponent
         {
-            if (entity.Id >= ToUpdate.Capacity)
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            
+            var length = ToUpdate.Length;
+            while (length <= entity.Id)
             {
-                ToUpdate.Capacity = entity.Id + 1;
-            }
-
-            if (!ComponentTypes.TryGetValue<T>(out var typeInfo))
-            {
-                return;
+                length <<= 1;
             }
             
+            if (ToUpdate.Length <= entity.Id)
+            {
+                Array.Resize(ref ToUpdate, length);
+            }
+
             Debug.Assert(typeInfo is { IsUnmanaged: true });
 
             if (!ToUpdate[entity.Id].HasValue)
@@ -95,32 +124,91 @@ namespace kv.Entities.V2
             }
             if (TryAddUnmanagedComponent(value, out var index))
             {
-                ToUpdate[entity.Id].Components.Set<T>(index);
+                ToUpdate[entity.Id].Components.Set<T>((typeInfo.Id, index, EntityToUpdate.Command.Add));
             }
         }
 
         [PublicAPI]
         public void AddUnmanagedComponent<T>(FutureEntity entity, T value) where T : unmanaged, IEntityComponent
         {
-            throw new System.NotImplementedException();
+            Debug.Assert(entity.Id >= 0 && entity.Id < ToCreate.Count);
+            
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            Debug.Assert(typeInfo is { IsUnmanaged: true });
+
+            if (TryAddUnmanagedComponent(value, out var index))
+            {
+                ToCreate[entity.Id].Components.Set<T>((typeInfo.Id, index));
+            }
         }
 
         [PublicAPI]
         public void AddManagedComponent<T>(Entity entity, T value) where T : IEntityComponent
         {
-            throw new System.NotImplementedException();
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            
+            var length = ToUpdate.Length;
+            while (length <= entity.Id)
+            {
+                length <<= 1;
+            }
+            
+            if (ToUpdate.Length <= entity.Id)
+            {
+                Array.Resize(ref ToUpdate, length);
+            }
+            
+            Debug.Assert(typeInfo is { IsUnmanaged: false });
+            
+            if (!ToUpdate[entity.Id].HasValue)
+            {
+                ToUpdate[entity.Id] = new EntityToUpdate(entity);
+            }
+            if (TryAddManagedComponent(value, out var index))
+            {
+                ToUpdate[entity.Id].Components.Set<T>((typeInfo.Id, index, EntityToUpdate.Command.Add));
+            }
         }
 
         [PublicAPI]
         public void AddManagedComponent<T>(FutureEntity entity, T value) where T : IEntityComponent
         {
-            throw new System.NotImplementedException();
+            Debug.Assert(entity.Id >= 0 && entity.Id < ToCreate.Count);
+            
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            Debug.Assert(typeInfo is { IsUnmanaged: false });
+
+            if (TryAddManagedComponent(value, out var index))
+            {
+                ToCreate[entity.Id].Components.Set<T>((typeInfo.Id, index));
+            }
         }
 
         [PublicAPI]
         public void RemoveComponent<T>(Entity entity) where T : IEntityComponent
         {
-            throw new System.NotImplementedException();
+            var hasComponent = ComponentTypes.TryGetValue<T>(out var typeInfo);
+            Debug.Assert(hasComponent);
+            
+            var length = ToUpdate.Length;
+            while (length <= entity.Id)
+            {
+                length <<= 1;
+            }
+            
+            if (ToUpdate.Length <= entity.Id)
+            {
+                Array.Resize(ref ToUpdate, length);
+            }
+            
+            if (!ToUpdate[entity.Id].HasValue)
+            {
+                ToUpdate[entity.Id] = new EntityToUpdate(entity);
+            }
+            ToUpdate[entity.Id].Components.Set<T>((typeInfo.Id, -1, EntityToUpdate.Command.Remove));
         }
 
         internal void Clear()
@@ -130,18 +218,9 @@ namespace kv.Entities.V2
                 componentList?.Dispose();
             }
 
-            Components.Clear();
+            Array.Clear(Components, 0, Components.Length);
             ToDestroy.Clear();
-
-            foreach (var entityToCreate in ToCreate)
-            {
-                if (!entityToCreate.HasValue)
-                {
-                    continue;
-                }
-                
-                entityToCreate.Components.Clear();
-            }
+            ToCreate.Clear();
 
             foreach (var entityToUpdate in ToUpdate)
             {
@@ -166,20 +245,23 @@ namespace kv.Entities.V2
 
             if (typeInfo.IsZeroSized)
             {
-                index = -1;
-                return false;
-            }
-            
-            if (!Components.TryGetValue<T>(out var componentList))
-            {
-                componentList = new UnmanagedComponentList<T>(typeInfo, MemoryPool<byte>.Shared);
-                Components.Set<T>(componentList);
+                index = 0;
+                return true;
             }
 
-            Debug.Assert(componentList is UnmanagedComponentList<T>);
-            var unmanagedComponentList = Unsafe.As<UnmanagedComponentList<T>>(componentList);
-            unmanagedComponentList.Add(value);
-            index = unmanagedComponentList.Count - 1;
+            UnmanagedComponentList<T> componentList;
+            if (Components[typeInfo.Id] is null)
+            {
+                componentList = new UnmanagedComponentList<T>(typeInfo, MemoryPool<byte>.Shared);
+                Components[typeInfo.Id] = componentList;
+            }
+            else
+            {
+                componentList = Unsafe.As<UnmanagedComponentList<T>>(Components[typeInfo.Id]);
+            }
+
+            componentList.Add(value);
+            index = componentList.Count - 1;
             return true;
         }
         
@@ -193,16 +275,19 @@ namespace kv.Entities.V2
             
             Debug.Assert(typeInfo is { IsUnmanaged: false });
             
-            if (!Components.TryGetValue<T>(out var componentList))
+            ManagedComponentList<T> componentList;
+            if (Components[typeInfo.Id] is null)
             {
                 componentList = new ManagedComponentList<T>(typeInfo, ArrayPool<T>.Shared);
-                Components.Set<T>(componentList);
+                Components[typeInfo.Id] = componentList;
             }
-
-            Debug.Assert(componentList is ManagedComponentList<T>);
-            var managedComponentList = Unsafe.As<ManagedComponentList<T>>(componentList);
-            managedComponentList.Add(value);
-            index = managedComponentList.Count - 1;
+            else
+            {
+                componentList = Unsafe.As<ManagedComponentList<T>>(Components[typeInfo.Id]);
+            }
+            
+            componentList.Add(value);
+            index = componentList.Count - 1;
             return true;
         }
     }

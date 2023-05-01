@@ -23,15 +23,13 @@
  */
 
 #nullable enable
-using System.Collections.Generic;
-
 namespace kv.Entities.V2
 {
-    public struct EntityToCreate
+    internal struct EntityToCreate
     {
         public readonly FutureEntity Entity;
         public bool HasValue;
-        public TypeMap<int> Components;
+        public TypeMap<(int typeId, int index)> Components;
 
         public EntityToCreate(FutureEntity entity)
         {

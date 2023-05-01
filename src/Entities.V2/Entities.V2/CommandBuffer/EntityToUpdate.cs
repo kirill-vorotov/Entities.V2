@@ -23,15 +23,19 @@
  */
 
 #nullable enable
-using System.Collections.Generic;
-
 namespace kv.Entities.V2
 {
-    public struct EntityToUpdate
+    internal struct EntityToUpdate
     {
+        public enum Command
+        {
+            Add,
+            Remove,
+        }
+        
         public readonly Entity Entity;
         public bool HasValue;
-        public TypeMap<int> Components;
+        public TypeMap<(int typeId, int index, Command command)> Components;
 
         public EntityToUpdate(Entity entity)
         {
