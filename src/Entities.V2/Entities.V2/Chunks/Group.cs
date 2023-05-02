@@ -85,11 +85,11 @@ namespace kv.Entities.V2
 
             BufferSize = bufferSize;
 
-            var typeIndex = 0;
             var totalUnmanagedComponentsSize = 0;
             var maxUnmanagedComponentAlignment = 0;
             var totalUnmanagedComponentAlignment = 0;
 
+            var groupComponentTypesIndex = 0;
             for (var i = 0; i < allTypes.Entries.Length; i++)
             {
                 if (!allTypes.Entries[i].HasValue)
@@ -97,32 +97,36 @@ namespace kv.Entities.V2
                     continue;
                 }
                 
-                if (!BitMask[i])
+                var typeInfo = allTypes.Entries[i].Value;
+                
+                if (!BitMask[typeInfo.Id])
                 {
-                    ArrayIndexLookup[i] = -1;
+                    ArrayIndexLookup[typeInfo.Id] = -1;
                     continue;
                 }
 
-                var typeInfo = allTypes.Entries[i].Value;
-                GroupComponentTypes[typeIndex] = typeInfo;
+                GroupComponentTypes[groupComponentTypesIndex] = typeInfo;
 
-                if (typeInfo is { IsUnmanaged: true, IsZeroSized: false })
+                if (typeInfo.IsUnmanaged)
                 {
-                    ArrayIndexLookup[i] = -1;
-                    totalUnmanagedComponentsSize += typeInfo.Size;
-                    totalUnmanagedComponentAlignment += typeInfo.Alignment;
-                    
-                    if (typeInfo.Alignment > maxUnmanagedComponentAlignment)
+                    ArrayIndexLookup[typeInfo.Id] = -1;
+
+                    if (!typeInfo.IsZeroSized)
                     {
-                        maxUnmanagedComponentAlignment = typeInfo.Alignment;
+                        totalUnmanagedComponentsSize += typeInfo.Size;
+                        totalUnmanagedComponentAlignment += typeInfo.Alignment;
+                    
+                        if (typeInfo.Alignment > maxUnmanagedComponentAlignment)
+                        {
+                            maxUnmanagedComponentAlignment = typeInfo.Alignment;
+                        }
                     }
                 }
                 else if (!typeInfo.IsUnmanaged)
                 {
-                    ArrayIndexLookup[i] = typeIndex;
+                    ArrayIndexLookup[typeInfo.Id] = groupComponentTypesIndex;
                 }
-                
-                typeIndex++;
+                groupComponentTypesIndex++;
             }
 
             if (totalUnmanagedComponentsSize > 0)
@@ -147,7 +151,7 @@ namespace kv.Entities.V2
                         offset = tmp * alignment;
                     }
 
-                    ArrayIndexLookup[i] = offset;
+                    ArrayIndexLookup[typeInfo.Id] = offset;
                     offset += componentsSize;
                 }
             }

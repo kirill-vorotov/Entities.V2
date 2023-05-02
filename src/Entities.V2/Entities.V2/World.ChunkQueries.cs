@@ -31,8 +31,11 @@ namespace kv.Entities.V2
 {
     public sealed partial class World
     {
-        internal ConcurrentDictionary<Type, ChunkQuery> ChunkQueries = new();
+        public readonly ConcurrentDictionary<Type, ChunkQuery> ChunkQueries = new();
 
+        [PublicAPI]
+        public ChunkQuery CreateChunkQuery() => new(EntityRepo, ComponentTypes);
+        
         [PublicAPI]
         public void UpdateCachedQueries()
         {

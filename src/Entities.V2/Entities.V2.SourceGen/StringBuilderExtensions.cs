@@ -22,12 +22,38 @@
  * SOFTWARE.
  */
 
-#nullable enable
-namespace kv.Entities.V2
+using System.Text;
+
+namespace kv.Entities.V2.SourceGen
 {
-    public enum QueryMode
+    public static class StringBuilderExtensions
     {
-        ReadOnly = 0,
-        ReadWrite = 1,
+        public static void AddIndentation(this StringBuilder stringBuilder, int indentation)
+        {
+            for (var i = 0; i < indentation; i++)
+            {
+                stringBuilder.Append("\t");
+            }
+        }
+        
+        public static void AppendLine(this StringBuilder stringBuilder, int indentation, string value)
+        {
+            for (var i = 0; i < indentation; i++)
+            {
+                stringBuilder.Append("\t");
+            }
+
+            stringBuilder.AppendLine(value);
+        }
+        
+        public static void Append(this StringBuilder stringBuilder, int indentation, string value)
+        {
+            for (var i = 0; i < indentation; i++)
+            {
+                stringBuilder.Append("\t");
+            }
+
+            stringBuilder.Append(value);
+        }
     }
 }
