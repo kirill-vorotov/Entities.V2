@@ -41,6 +41,7 @@ namespace kv.Entities.V2.SourceGen
             var indentation = 0;
             
             sb.AppendLine(indentation, "#nullable enable");
+            sb.AppendLine(indentation, "using System;");
             sb.AppendLine(indentation, "using System.Buffers;");
             sb.AppendLine(indentation, "using System.Runtime.CompilerServices;");
             sb.AppendLine(indentation, $"namespace {Namespace}");
