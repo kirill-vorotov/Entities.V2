@@ -49,6 +49,10 @@ namespace kv.Entities.V2.SourceGen
                 sb.AppendLine();
                 sb.AppendLine(indentation, $"public bool HasComponent<T>() where T : {ConstIEntityComponent} => Chunk?.HasComponent<T>() ?? false;");
                 sb.AppendLine();
+                sb.AppendLine(indentation, $"public ref T GetComponent<T>() where T : unmanaged, {ConstIEntityComponent} => ref Chunk.GetComponents<T>()[Index];");
+                sb.AppendLine();
+                sb.AppendLine(indentation, $"public ref T GetManagedComponent<T>() where T : {ConstIEntityComponent} => ref Chunk.GetManagedComponents<T>()[Index];");
+                sb.AppendLine();
                 
                 foreach (var componentTypeSymbol in allReadWrite)
                 {
