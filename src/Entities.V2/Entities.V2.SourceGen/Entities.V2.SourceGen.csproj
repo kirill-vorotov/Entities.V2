@@ -5,6 +5,13 @@
         <RootNamespace>kv.Entities.V2.SourceGen</RootNamespace>
         <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
+        <Configurations>Debug;Release;ReleaseUnity</Configurations>
+        <Platforms>AnyCPU</Platforms>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'ReleaseUnity' ">
+      <DefineConstants>TRACE;UNITY_ENGINE;</DefineConstants>
+      <Optimize>true</Optimize>
     </PropertyGroup>
 
     <ItemGroup>

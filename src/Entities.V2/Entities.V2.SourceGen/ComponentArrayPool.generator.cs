@@ -23,6 +23,13 @@ namespace kv.Entities.V2.SourceGen
 
         public void Execute(GeneratorExecutionContext context)
         {
+#if UNITY_ENGINE
+            if (context.Compilation.AssemblyName != "Assembly-CSharp")
+            {
+                return;
+            }
+#endif
+            
             var namedTypeSymbols = new List<INamedTypeSymbol>();
             Utils.GetNamedTypes(context.Compilation.GlobalNamespace.GetNamespaceMembers(), ref namedTypeSymbols);
             

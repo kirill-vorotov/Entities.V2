@@ -78,6 +78,13 @@ namespace kv.Entities.V2.SourceGen
 
         public void Execute(GeneratorExecutionContext context)
         {
+#if UNITY_ENGINE
+            if (context.Compilation.AssemblyName != "Assembly-CSharp")
+            {
+                return;
+            }
+#endif
+            
             StringBuilder sb = new();
             
             List<INamedTypeSymbol> namedTypeSymbols = new();
